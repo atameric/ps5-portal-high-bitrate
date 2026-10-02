@@ -42,3 +42,7 @@ Aktarma en fazla 40 saniye; başlangıç ve temizleme ek süre alabilir. Ayrı k
 
 
 Linux kullanıcı raporu: [tissee](https://www.reddit.com/r/PlaystationPortal/comments/1wtyglf/comment/pd2k5ls/), EndeavourOS ve Ethernet bağlı Raspberry Pi OS / Pi 3B üzerinde başarı bildirdi. Pi yeniden başlatma, yeni Portal bağlantısı ve PS5 dinlenme modundan açılırken 100 Mbps profili de çalışmış. Docker/IPv4 forwarding notu ve kalan testler [otomasyon kılavuzunda](AUTOMATION.tr.md). Bu rapor gerçek sürekli bitrate veya giriş gecikmesi ölçümü değildir.
+
+## Projeyi destekle
+
+☕ **Projeyi destekle:** Proje ve APK ücretsiz ve açık kaynak olarak kalacak. Geliştirme ve test çalışmalarının devamına destek olmak istersen buradan bana bir kahve ısmarlayabilirsin: [https://buymeacoffee.com/atameric](https://buymeacoffee.com/atameric) ❤️

@@ -106,3 +106,7 @@ Ctrl-C enters cleanup. A separate watchdog offers recovery if the main process c
 Tests use synthetic packets and mocked network operations, with no devices or sudo required. CI runs these tests; it does not test a real console. The public packaging and configurable network layer have offline validation; only their source prototype was tested on the owner's devices.
 
 Independent community experiment; not affiliated with Sony or PlayStation. Protocol context: [Chiaki-ng](https://github.com/streetpea/chiaki-ng). No Chiaki source, Sony firmware, firmware keys or captured sessions are bundled. MIT licensed; see LICENSE.
+
+## Support the project
+
+☕ **Support the project:** The project and APK will remain free and open source. If you'd like to support continued development and testing, you can buy me a coffee here: [https://buymeacoffee.com/atameric](https://buymeacoffee.com/atameric) ❤️
