@@ -168,6 +168,7 @@ class Wizard:
         self.report = None
         self.notice = ''
         self.colors = {}
+        self.rainbow_colors = []
         self.cursor_mode = None
         self.screen.keypad(True)
         self.screen.timeout(100)
@@ -184,6 +185,17 @@ class Wizard:
                      ('blue', curses.COLOR_BLUE), ('magenta', curses.COLOR_MAGENTA)], 1):
                 curses.init_pair(number, color, background)
                 self.colors[name] = curses.color_pair(number)
+            # Bright steps around the 256-color cube keep the sweep readable.
+            palette = (203, 209, 215, 221, 227, 191, 155, 119,
+                       83, 84, 85, 86, 87, 81, 75, 69,
+                       63, 99, 135, 171, 207, 206, 205, 204)
+            if curses.COLORS >= 256 and curses.COLOR_PAIRS > len(self.colors) + len(palette):
+                for number, color in enumerate(palette, len(self.colors) + 1):
+                    curses.init_pair(number, color, background)
+                    self.rainbow_colors.append(curses.color_pair(number) | curses.A_BOLD)
+        if not self.rainbow_colors:
+            self.rainbow_colors = [self.emphasis(name) for name in
+                                   ('error', 'warning', 'success', 'accent', 'blue', 'magenta')]
         self.hide_cursor()
 
     def hide_cursor(self):
@@ -227,9 +239,12 @@ class Wizard:
             column += len(text)
 
     def rainbow(self, row, column, text):
-        colors = ('error', 'warning', 'success', 'accent', 'blue', 'magenta')
+        """Let color flow through stationary text on the existing redraw clock."""
+        count = len(self.rainbow_colors)
+        phase = int(time.monotonic() * count / 4) if self.animations else 0
         for index, character in enumerate(text):
-            self.put(row, column + index, character, self.emphasis(colors[index % len(colors)]))
+            color = (index * count // len(text) - phase) % count
+            self.put(row, column + index, character, self.rainbow_colors[color])
 
     def activity(self, row, text, elapsed):
         """A small activity mark and text sweep, driven by relay ticks, never sleep."""
