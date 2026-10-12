@@ -475,19 +475,8 @@ class Wizard:
             return 'accepted'
         return 'confirmed' if self.event.get('samples', 0) >= 3 else 'verifying'
 
-    def connection_art(self, row, stage, elapsed):
-        """Keep the devices still while the link reflects the observed state."""
-        color, label = {
-            'checking': ('warning', 'CHECK'),
-            'preparing': ('warning', 'WAIT'),
-            'waiting': ('accent', 'CONNECT'),
-            'connecting': ('warning', 'LINKING'),
-            'accepted': ('accent', 'LINKED'),
-            'verifying': ('accent', 'VERIFY'),
-            'confirmed': ('success', 'OK'),
-            'restoring': ('warning', 'RESTORE'),
-            'stopping': ('warning', 'RESTORE'),
-        }[stage]
+    def draw_devices(self, row, label, color, *, highlighted=False, marker='*'):
+        """Share the same device silhouettes between progress and results."""
         portal = (
             '    .-------------.    ',
             ' .--|             |--. ',
@@ -505,20 +494,37 @@ class Wizard:
         left = 4
         width = min(82, self.screen.getmaxyx()[1] - 8)
         right = left + width - max(map(len, ps5))
-        linked = stage in ('accepted', 'verifying', 'confirmed')
-        outline = self.colors.get(color, 0) if linked else self.curses.A_DIM
+        outline = self.colors.get(color, 0) if highlighted else self.curses.A_DIM
         for index, line in enumerate(portal):
             self.put(row + index, left, line, outline)
         for index, line in enumerate(ps5):
             self.put(row + index, right, line, outline)
         self.put(row + 2, left + 5, label.center(13), self.emphasis(color))
-        self.put(row + 2, right + 6, '?' if stage == 'checking' else '*',
-                 self.emphasis(color))
+        self.put(row + 2, right + 6, marker, self.emphasis(color))
         self.put(row + 5, left + 7, 'PS PORTAL', self.curses.A_BOLD)
         self.put(row + 5, right + 4, 'PS5', self.curses.A_BOLD)
 
         start = left + max(map(len, portal)) + 2
         length = right - start - 2
+        return start, length
+
+    def connection_art(self, row, stage, elapsed):
+        """Keep the devices still while the link reflects the observed state."""
+        color, label = {
+            'checking': ('warning', 'CHECK'),
+            'preparing': ('warning', 'WAIT'),
+            'waiting': ('accent', 'CONNECT'),
+            'connecting': ('warning', 'LINKING'),
+            'accepted': ('accent', 'LINKED'),
+            'verifying': ('accent', 'VERIFY'),
+            'confirmed': ('success', 'OK'),
+            'restoring': ('warning', 'RESTORE'),
+            'stopping': ('warning', 'RESTORE'),
+        }[stage]
+        linked = stage in ('accepted', 'verifying', 'confirmed')
+        start, length = self.draw_devices(
+            row, label, color, highlighted=linked,
+            marker='?' if stage == 'checking' else '*')
         if linked:
             line = '=' if stage == 'confirmed' else '-'
             self.put(row + 2, start, '<' + line * (length - 2) + '>',
@@ -539,6 +545,26 @@ class Wizard:
                     marker = '[' + spinner + ']'
                 self.put(row + 2, start + (length - 5) // 2, marker.center(5),
                          self.emphasis(color))
+
+    def result_art(self, row, summary):
+        """Show the completed attempt, without suggesting ongoing monitoring."""
+        label, marker = {
+            'success': ('READY', '[OK]'),
+            'warning': ('CHECK', '[?]'),
+            'error': ('RECOVER', '[!]'),
+        }[summary.kind]
+        if summary.title == 'Attempt stopped':
+            label, marker = 'STOPPED', '[X]'
+        start, length = self.draw_devices(
+            row, label, summary.kind, highlighted=summary.kind != 'warning',
+            marker='*' if summary.kind == 'success' else marker[1])
+        if summary.kind == 'success':
+            line = '<' + '=' * (length - 2) + '>'
+        else:
+            line = ('- ' * length)[:length]
+        self.put(row + 2, start, line, self.colors.get(summary.kind, 0))
+        self.put(row + 2, start + (length - len(marker) - 2) // 2,
+                 ' ' + marker + ' ', self.emphasis(summary.kind))
 
     def draw_progress(self):
         phase = self.event.get('phase', 'checking')
@@ -743,14 +769,14 @@ class Wizard:
         self.badge(7, label, summary.title, summary.kind)
         self.transition_line(8, self.emphasis(summary.kind), elapsed,
                              'forward' if summary.kind == 'success' else 'inward')
-        row = 10
+        self.result_art(9, summary)
+        row = 15
         if summary.target is not None:
-            self.put(row, 4, f'{summary.target:.3f} Mbps  /  PS5-reported target', self.curses.A_BOLD)
-            row += 2
-        row = self.paragraph(row, summary.message, max_rows=2) + 1
-        self.paragraph(row, summary.advice, max_rows=4)
-        if summary.target is not None:
-            self.put(self.screen.getmaxyx()[0] - 5, 4, 'Target bitrate is not measured video throughput.', self.curses.A_DIM)
+            self.inline(row, 4, (f'{summary.target:.3f} Mbps', self.curses.A_BOLD),
+                        (' / PS5 target, not measured throughput.', self.curses.A_DIM))
+            row += 1
+        row = self.paragraph(row, summary.message, self.curses.A_DIM, max_rows=2)
+        self.paragraph(row, summary.advice, max_rows=self.screen.getmaxyx()[0] - 4 - row)
         self.button(self.screen.getmaxyx()[0] - 4,
                     'Try another session  ->' if summary.kind != 'error' else 'Quit and allow recovery')
         self.screen.refresh()

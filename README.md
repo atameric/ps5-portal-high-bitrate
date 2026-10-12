@@ -75,6 +75,8 @@ Preview the same screens without administrator access, packet capture, configura
 
 The connection screen shows Portal and PS5 terminal art. A broken line waits for a new connection; an outgoing marker follows the startup request, and the line joins only after PS5 accepts. Colors and labels follow device checks, bitrate confirmation and direct-path restoration. The 120-second countdown stays visible while waiting. Add `--no-animations` to keep the same states and highlights without motion. Effects use existing progress callbacks and never pause the relay or require an extra keypress.
 
+The result screen uses the same devices with a settled outcome: a green `[OK]` link for verified success, an amber `[?]` for an unconfirmed attempt, `[X]` for cancellation, or a red `[!]` for recovery problems. Labels and symbols remain readable without color. This shows the completed attempt, not a live connection monitor; the reported target and next action remain below the artwork.
+
 The wizard reserves five seconds for network warm-up, then the full 120-second connection window, and at most 15 seconds for confirmation after the first modified startup. Its independent restoration watchdog waits **155 seconds** from its own start. Preflight and cleanup add time around the relay window. Keep the Mac awake until the result screen confirms restoration. The countdown is based on elapsed time, so incoming traffic is not needed to advance it.
 
 Original command-line launcher (retains its 40-second relay window):
