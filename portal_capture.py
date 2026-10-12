@@ -76,14 +76,17 @@ def preflight():
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--watchdog',type=Path)
+    p.add_argument('--watchdog-seconds', type=int, default=55)
     p.add_argument('--restore',type=Path)
     p.add_argument('--check',action='store_true')
     a=p.parse_args()
+    if not 16 <= a.watchdog_seconds <= 170:
+        p.error('--watchdog-seconds must be between 16 and 170')
     if os.geteuid()!=0: p.error('Run with sudo from your local Terminal')
     if a.watchdog or a.restore:
         if a.watchdog:
             signal.signal(signal.SIGHUP,signal.SIG_IGN)
-            time.sleep(55)
+            time.sleep(a.watchdog_seconds)
         path=a.watchdog or a.restore
         errors=restore(json.loads(path.read_text()))
         path.with_suffix('.result.json').write_text(json.dumps({'restoration_errors':errors}))

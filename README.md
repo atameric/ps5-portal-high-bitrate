@@ -43,7 +43,9 @@ python3 -m venv .venv
 cp config.example.json config.json
 ```
 
-Alternatively double-click `Setup.command`. Edit `config.json` with the **actual** PS5 and Portal IPv4 addresses and the Mac interface. The example addresses are documentation placeholders and will not reach your devices. Use DHCP reservations so addresses do not change. Find interface names with `networksetup -listallhardwareports`; Wi-Fi is often `en0`, but not always.
+Alternatively double-click `Setup.command`, then `Start.command` to open the **guided terminal wizard**. It explains the prerequisites, asks for the two device IPv4 addresses, suggests the Mac LAN interface and lets you select 65/100/200 Mbps. Existing addresses are pre-filled. Find the device addresses in your router's connected-device list and use DHCP reservations so they do not change. The wizard saves `config.json` locally; no manual JSON editing is needed. Bitrate preferences stay separately in the private, git-ignored `tui-settings.json`.
+
+For the original command-line launcher, edit `config.json` yourself. The example addresses are documentation placeholders and will not reach your devices. Find interface names with `networksetup -listallhardwareports`; Wi-Fi is often `en0`, but not always.
 
 Optional preflight (resolves only the two configured peers; does not change routing/ARP mappings):
 
@@ -54,12 +56,28 @@ sudo .venv/bin/python portal_capture.py --check
 ## Each new play session
 
 1. Disconnect Portal from PS5; leave PS5 powered on.
-2. Double-click `Start.command`, select 65, 100 or 200, and press Enter. Enter the Mac password only at the local sudo prompt.
-3. Wait for **READY**, then start a fresh connection on Portal.
-4. Look for **Startup packet modified**. The tool restores the direct path after three sufficiently high target reports following acceptance and stream setup, or at the 40-second relay deadline.
-5. Read the final status. Once complete, the Mac is no longer relaying the session. No need to leave the launcher running.
+2. Double-click `Start.command`. Enter the Mac password only at the local sudo prompt. Read the highlighted prerequisites, check the saved addresses in the editable fields and select a profile. Start with **65 Mbps**. Use Tab or Up/Down to move through the form; type to replace the focused value. Left/Right or Space selects one of the bitrate options.
+3. Keep Portal disconnected during **WAIT**. Wait for the green **READY / CONNECT NOW** prompt. Only then start a fresh connection on Portal. A visible **120-second countdown**, beginning at **02:00**, shows how long you have to connect.
+4. Follow the live request, acceptance and target-report indicators. A matching startup gets up to 15 further seconds to confirm the target, including when you connect near the end of the countdown. Once three high target reports arrive, the tool restores the direct path immediately.
+5. Read the result. **Ready to play** requires target confirmation, local packet-egress verification and no restoration errors. Once complete, the Mac is no longer relaying the session. Quit with Q or Esc; Enter starts another guided attempt. Q, Esc or Ctrl-C during the attempt requests cleanup before the result appears. Recovery failures block the retry button and show recovery details with D.
 
-Terminal alternative:
+The wizard uses the standard macOS Python `curses` module; it needs no new dependency. Use an interactive terminal at least 72 columns by 24 rows. To launch it from this project folder:
+
+```sh
+sudo .venv/bin/python portal_tui.py
+```
+
+Preview the same screens without administrator access, packet capture, configuration writes or network changes:
+
+```sh
+.venv/bin/python portal_tui.py --demo
+```
+
+Preparation uses a small activity indicator; readiness, success and incomplete attempts have distinct labels and brief transition effects. Add `--no-animations` to keep the same labels and highlights without motion. Effects never pause the relay or require an extra keypress.
+
+The wizard reserves five seconds for network warm-up, then the full 120-second connection window, and at most 15 seconds for confirmation after the first modified startup. Its independent restoration watchdog waits **155 seconds** from its own start. Preflight and cleanup add time around the relay window. Keep the Mac awake until the result screen confirms restoration. The countdown is based on elapsed time, so incoming traffic is not needed to advance it.
+
+Original command-line launcher (retains its 40-second relay window):
 
 ```sh
 sudo .venv/bin/python portal_active_probe.py --profile 65
@@ -67,7 +85,7 @@ sudo .venv/bin/python portal_active_probe.py --profile 65
 sudo .venv/bin/python portal_active_probe.py --profile 100
 ```
 
-The five-second warm-up is included in the 40-second relay window. Startup preflight and cleanup add time around it. The independent restoration watchdog waits 55 seconds from its own start. Higher bitrate can increase congestion; compare profiles in the same moving scene. To revert, disconnect and reconnect normally without the launcher. Each new session negotiates its own settings.
+For this original launcher, the five-second warm-up is included in the 40-second relay window, and the independent restoration watchdog waits 55 seconds from its own start. `--connect-timeout 60` optionally gives the command-line launcher 60 seconds after READY and adjusts its watchdog accordingly. Higher bitrate can increase congestion; compare profiles in the same moving scene. To revert, disconnect and reconnect normally without the launcher. Each new session negotiates its own settings.
 
 ### 200 Mbps experiment
 
@@ -88,7 +106,7 @@ An independent bounded `tcpdump` capture verifies the changed packet appeared on
 - **NOT APPLIED:** no matching new handshake was captured. Disconnect, retry, and connect only after READY. Do not infer that PS5 rejected the target.
 - **UNCONFIRMED:** a mutation occurred but the required high target sequence was not observed. Reconnect normally or try 65. Do not repeatedly force an unknown firmware layout.
 - **Stutter or blurry picture:** compare 65 and 100 before trying 200; higher targets are not always better. Reconnect normally to undo the session change.
-- **Restoration failure:** allow the watchdog its 55 seconds. The report includes `watchdog_state`, the private path to the original network state. Retry restoration with `sudo .venv/bin/python portal_capture.py --restore /path/from/report/state.json`. Use only the state file generated by this tool. If a process was force-killed, reconnect the two devices to refresh neighbor mappings.
+- **Restoration failure:** allow the watchdog its deadline (155 seconds for the wizard, 55 for the default original launcher; `watchdog_seconds` is included in new reports). The report includes `watchdog_state`, the private path to the original network state. Retry restoration with `sudo .venv/bin/python portal_capture.py --restore /path/from/report/state.json`. Use only the state file generated by this tool. If a process was force-killed, reconnect the two devices to refresh neighbor mappings.
 - **Existing lock:** do not run overlapping experiments. If no experiment or watchdog is running and restoration is complete, remove the stale `/var/run/portal-lab-capture.lock` with sudo. Never delete it while another run is active.
 
 Ctrl-C enters cleanup. A separate watchdog offers recovery if the main process crashes, but cannot recover while the Mac is powered off. Review `restoration_errors` rather than assuming the timer guarantees success.
