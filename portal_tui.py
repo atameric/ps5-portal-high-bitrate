@@ -110,7 +110,8 @@ def summarize(report):
         message = report.get('run_error') or 'The attempt was stopped.'
         title = 'Attempt stopped' if message == 'Cancelled by user' else 'Could not finish'
         return Result('warning', title, message,
-                      ('No network mappings were changed. Check the addresses and LAN adapter, then try again.'
+                      ('No network mappings were changed. Keep both devices awake on the same LAN. '
+                       'Check the addresses and LAN adapter, then try again.'
                        if report.get('preflight_failed') else
                        'Network restoration completed. You can try again or quit.'))
     if not report.get('unique_mutated_sequences'):

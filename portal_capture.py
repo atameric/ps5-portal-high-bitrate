@@ -36,6 +36,9 @@ def mac(ip):
         answers,_=srp(Ether(src=own,dst='ff:ff:ff:ff:ff:ff')/ARP(pdst=ip),iface=IFACE,timeout=2,retry=1,verbose=False)
         found={r[ARP].hwsrc.lower() for _,r in answers if ARP in r and r[ARP].psrc==ip and r[ARP].op==2}
         if len(found)==1: return found.pop()
+        device='PS5' if ip==PS5 else 'Portal' if ip==PORTAL else 'Device'
+        if found: raise RuntimeError(f'Multiple devices replied for {device} ({ip}) on {IFACE}; check for a duplicate IP. No network changes made.')
+        raise RuntimeError(f'{device} ({ip}) did not respond on {IFACE}; no network changes made')
     if not match: raise RuntimeError(f'{ip}: MAC resolution requires local sudo; no network changes made')
     parts=match[1].split(':')
     if len(parts)!=6: raise RuntimeError('Invalid MAC')
