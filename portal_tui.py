@@ -247,17 +247,6 @@ class Wizard:
             color = (index * count // len(text) - phase) % count
             self.put(row, column + index, character, self.rainbow_colors[color])
 
-    def activity(self, row, text, elapsed):
-        """A small activity mark and text sweep, driven by relay ticks, never sleep."""
-        spinner = '|/-\\'[int(elapsed * 8) % 4] if self.animations else '*'
-        self.put(row, 4, spinner, self.emphasis('warning'))
-        self.put(row, 7, text)
-        if self.animations:
-            offset = int(elapsed * 12) % (len(text) + 10) - 5
-            for index, character in enumerate(text):
-                if abs(index - offset) < 3:
-                    self.put(row, 7 + index, character, self.curses.A_BOLD)
-
     def transition_line(self, row, color, elapsed, direction='forward'):
         """One brief sweep marks a state change; the new state is readable at once."""
         width = min(82, self.screen.getmaxyx()[1] - 8)
@@ -475,53 +464,142 @@ class Wizard:
                 self.values[self.focus] = value
                 self.error = ''
 
+    def connection_stage(self):
+        """Describe the latest relay evidence; elapsed time cannot establish a link."""
+        phase = self.event.get('phase', 'checking')
+        if phase != 'confirming':
+            return phase
+        if not self.event.get('accepted'):
+            return 'connecting'
+        if not self.event.get('streaming'):
+            return 'accepted'
+        return 'confirmed' if self.event.get('samples', 0) >= 3 else 'verifying'
+
+    def connection_art(self, row, stage, elapsed):
+        """Keep the devices still while the link reflects the observed state."""
+        color, label = {
+            'checking': ('warning', 'CHECK'),
+            'preparing': ('warning', 'WAIT'),
+            'waiting': ('accent', 'CONNECT'),
+            'connecting': ('warning', 'LINKING'),
+            'accepted': ('accent', 'LINKED'),
+            'verifying': ('accent', 'VERIFY'),
+            'confirmed': ('success', 'OK'),
+            'restoring': ('warning', 'RESTORE'),
+            'stopping': ('warning', 'RESTORE'),
+        }[stage]
+        portal = (
+            '    .-------------.    ',
+            ' .--|             |--. ',
+            '| + |             | o |',
+            "| o '-------------' + |",
+            ' \\___/           \\___/ ',
+        )
+        ps5 = (
+            '   /|  |\\',
+            '  / |  | \\',
+            ' |  |  |  |',
+            ' |  |  :  |',
+            ' |__|__|__|',
+        )
+        left = 4
+        width = min(82, self.screen.getmaxyx()[1] - 8)
+        right = left + width - max(map(len, ps5))
+        linked = stage in ('accepted', 'verifying', 'confirmed')
+        outline = self.colors.get(color, 0) if linked else self.curses.A_DIM
+        for index, line in enumerate(portal):
+            self.put(row + index, left, line, outline)
+        for index, line in enumerate(ps5):
+            self.put(row + index, right, line, outline)
+        self.put(row + 2, left + 5, label.center(13), self.emphasis(color))
+        self.put(row + 2, right + 6, '?' if stage == 'checking' else '*',
+                 self.emphasis(color))
+        self.put(row + 5, left + 7, 'PS PORTAL', self.curses.A_BOLD)
+        self.put(row + 5, right + 4, 'PS5', self.curses.A_BOLD)
+
+        start = left + max(map(len, portal)) + 2
+        length = right - start - 2
+        if linked:
+            line = '=' if stage == 'confirmed' else '-'
+            self.put(row + 2, start, '<' + line * (length - 2) + '>',
+                     self.colors.get(color, 0))
+            if self.animations:
+                offset = 1 + (length - 4 - int(elapsed * 8) % (length - 3))
+                self.put(row + 2, start + offset, '<<', self.emphasis(color))
+        else:
+            self.put(row + 2, start, ('- ' * length)[:length], self.curses.A_DIM)
+            if stage == 'connecting':
+                offset = int(elapsed * 8) % (length - 1) if self.animations else length // 2
+                self.put(row + 2, start + offset, '>>', self.emphasis(color))
+            else:
+                if stage == 'waiting':
+                    marker = '.' * (1 + int(elapsed * 2) % 3) if self.animations else '...'
+                else:
+                    spinner = '|/-\\'[int(elapsed * 6) % 4] if self.animations else '*'
+                    marker = '[' + spinner + ']'
+                self.put(row + 2, start + (length - 5) // 2, marker.center(5),
+                         self.emphasis(color))
+
     def draw_progress(self):
         phase = self.event.get('phase', 'checking')
+        stage = self.connection_stage()
         elapsed = max(0, time.monotonic() - self.phase_started)
         footer = 'Restoring the direct path; please keep this Mac awake.' if phase in ('restoring', 'stopping') else 'Q / Esc / Ctrl+C: stop and restore the network'
         if not self.frame(2, footer):
             self.small_terminal(live=True)
             return
+        label, title, message, color = {
+            'checking': ('WAIT', 'Keep Portal disconnected', 'Checking devices...', 'warning'),
+            'preparing': ('WAIT', 'Keep Portal disconnected', 'Preparing the connection path...', 'warning'),
+            'waiting': ('READY', 'CONNECT NOW: Portal -> PS5', 'Waiting for Portal to connect...', 'success'),
+            'connecting': ('LINKING', 'Connection request received', 'Waiting for PS5 to accept the connection...', 'warning'),
+            'accepted': ('LINKED', 'PS5 accepted the connection', 'Waiting for stream information...', 'accent'),
+            'verifying': ('VERIFY', 'Checking the higher target', 'Verifying the higher bitrate...', 'accent'),
+            'confirmed': ('CONFIRMED', 'Higher target reported', 'PS5 confirmed the higher target.', 'success'),
+            'restoring': ('RESTORING', 'Finishing this attempt', 'Restoring the direct connection...', 'warning'),
+            'stopping': ('STOPPING', 'Restoring your network', 'Restoring the direct connection...', 'warning'),
+        }[stage]
+        self.badge(7, label, title, color)
+        self.transition_line(8, self.emphasis(color), elapsed,
+                             'outward' if phase == 'waiting' else 'forward')
+        self.put(9, 4, message)
+        self.connection_art(10, stage, elapsed)
         if phase == 'waiting':
-            self.badge(7, 'READY', 'CONNECT NOW: Portal -> PS5', 'success')
-            self.transition_line(8, self.emphasis('success'), elapsed, 'outward')
-            self.put(9, 4, 'On Portal, select your PS5 to start Remote Play.')
             remaining = max(0, min(CONNECT_SECONDS, self.event.get('seconds', 0)))
             color = 'warning' if remaining <= 20 else 'success'
-            self.inline(11, 4, (f'{remaining // 60:02d}:{remaining % 60:02d}', self.emphasis(color)),
+            self.inline(17, 4, (f'{remaining // 60:02d}:{remaining % 60:02d}', self.emphasis(color)),
                         (f'  /  {remaining}s left to connect', self.curses.A_BOLD))
             width = min(48, self.screen.getmaxyx()[1] - 12)
             filled = round(width * remaining / CONNECT_SECONDS)
-            self.put(12, 4, '[' + '#' * filled + '.' * (width - filled) + ']',
+            self.put(18, 4, '[' + '#' * filled + '.' * (width - filled) + ']',
                      self.colors.get(color, 0))
+            self.put(19, 4, 'On Portal, select your PS5 to start Remote Play.', self.curses.A_DIM)
         elif phase in ('checking', 'preparing'):
-            self.badge(7, 'WAIT', 'Keep Portal disconnected', 'warning')
-            self.activity(9, 'Checking your devices...' if phase == 'checking'
-                          else 'Preparing the connection path...', elapsed)
-            self.put(11, 4, 'No action needed yet.', self.curses.A_BOLD)
-            self.put(12, 4, f'When READY appears, you get {CONNECT_SECONDS} seconds to connect.',
+            self.put(17, 4, 'No action needed yet.', self.curses.A_BOLD)
+            self.put(18, 4, f'When READY appears, you get {CONNECT_SECONDS} seconds to connect.',
                      self.curses.A_DIM)
         elif phase == 'confirming':
-            self.badge(7, 'CONNECTED', 'Checking the higher target', 'accent')
-            self.activity(9, 'Waiting for PS5 confirmation...', elapsed)
-            self.put(11, 4, 'Keep Portal connected.', self.curses.A_BOLD)
-            self.put(12, 4, f'Up to {self.event.get("seconds", CONFIRM_SECONDS)}s left to confirm.',
-                     self.curses.A_DIM)
+            guidance = ('Finishing this attempt...' if stage == 'confirmed' else
+                        f'Up to {self.event.get("seconds", CONFIRM_SECONDS)}s left to confirm.')
+            self.inline(17, 4, ('Keep Portal connected.  ', self.curses.A_BOLD),
+                        (guidance, self.curses.A_DIM))
+            column = 4
+            for done, text in (
+                    (self.event.get('modified', 0) > 0, 'Request'),
+                    (self.event.get('accepted', False), 'PS5 accepted'),
+                    (self.event.get('samples', 0) >= 3, f'Target {min(self.event.get("samples", 0), 3)}/3')):
+                text = ('[x] ' if done else '[ ] ') + text + '   '
+                self.put(18, column, text,
+                         self.colors.get('success', 0) if done else self.curses.A_DIM)
+                column += len(text)
         else:
-            self.badge(7, 'RESTORING', 'Finishing this attempt', 'accent')
-            self.put(9, 4, 'Restoring the direct connection...')
-            self.put(11, 4, 'Keep this Mac awake until the result appears.', self.curses.A_BOLD)
-        for row, done, text in (
-                (14, self.event.get('modified', 0) > 0, 'New connection request modified'),
-                (15, self.event.get('accepted', False), 'PS5 accepted the connection'),
-                (16, self.event.get('samples', 0) >= 3, f'High target reports: {min(self.event.get("samples", 0), 3)} / 3')):
-            self.put(row, 4, ('[x] ' if done else '[ ] ') + text,
-                     self.colors.get('success', 0) if done else self.curses.A_DIM)
+            self.put(17, 4, 'Keep this Mac awake until the result appears.', self.curses.A_BOLD)
         target = self.event.get('target_bitrate')
         if isinstance(target, (int, float)):
-            self.put(18, 4, f'PS5-reported target: {target / 1e6:.3f} Mbps', self.curses.A_BOLD)
+            self.put(19, 4, f'PS5-reported target: {target / 1e6:.3f} Mbps', self.curses.A_BOLD)
         if self.notice:
-            self.paragraph(19, self.notice, self.colors.get('warning', 0))
+            self.put(19, 4, ' ' * min(82, self.screen.getmaxyx()[1] - 8))
+            self.paragraph(19, self.notice, self.colors.get('warning', 0), max_rows=2)
         self.screen.refresh()
 
     def progress(self, event):
@@ -549,6 +627,13 @@ class Wizard:
     def simulate(self):
         """Exercise the actual screens without sudo, packet capture, or file writes."""
         target = {'65': 63_106_000, '100': 97_087_000, '200': 194_174_000}[self.profile]
+        if not self.progress({'type': 'checking'}):
+            return self.cancelled_demo()
+        start = time.monotonic()
+        while time.monotonic() - start < .8:
+            if not self.progress({'type': 'tick', 'phase': 'checking'}):
+                return self.cancelled_demo()
+            time.sleep(.1)
         if not self.progress({'type': 'preparing', 'seconds': 5}):
             return self.cancelled_demo()
         start = time.monotonic()
@@ -566,6 +651,14 @@ class Wizard:
             time.sleep(.1)
         if not self.progress({'type': 'modified'}):
             return self.cancelled_demo()
+        start = time.monotonic()
+        while time.monotonic() - start < .8:
+            if not self.progress({'type': 'tick', 'phase': 'confirming'}):
+                return self.cancelled_demo()
+            time.sleep(.1)
+        if not self.progress({'type': 'observed', 'accepted': True}):
+            return self.cancelled_demo()
+        time.sleep(.4)
         for samples in range(1, 4):
             if not self.progress({'type': 'tick', 'phase': 'confirming',
                                   'seconds': CONFIRM_SECONDS - samples,
