@@ -180,7 +180,8 @@ class Wizard:
                 background = curses.COLOR_BLACK
             for number, (name, color) in enumerate(
                     [('accent', curses.COLOR_CYAN), ('success', curses.COLOR_GREEN),
-                     ('warning', curses.COLOR_YELLOW), ('error', curses.COLOR_RED)], 1):
+                     ('warning', curses.COLOR_YELLOW), ('error', curses.COLOR_RED),
+                     ('blue', curses.COLOR_BLUE), ('magenta', curses.COLOR_MAGENTA)], 1):
                 curses.init_pair(number, color, background)
                 self.colors[name] = curses.color_pair(number)
         self.hide_cursor()
@@ -224,6 +225,11 @@ class Wizard:
         for text, style in spans:
             self.put(row, column, text, style)
             column += len(text)
+
+    def rainbow(self, row, column, text):
+        colors = ('error', 'warning', 'success', 'accent', 'blue', 'magenta')
+        for index, character in enumerate(text):
+            self.put(row, column + index, character, self.emphasis(colors[index % len(colors)]))
 
     def activity(self, row, text, elapsed):
         """A small activity mark and text sweep, driven by relay ticks, never sleep."""
@@ -292,21 +298,22 @@ class Wizard:
         self.put(row, 4, '  ' + text + '  ', style)
 
     def prepare(self):
+        highlight = self.emphasis('warning')
         while True:
             if self.frame(0, 'Enter: continue    Esc: quit'):
                 self.put(7, 4, 'Before you begin', self.curses.A_BOLD)
                 self.inline(9, 4, ('1. ', self.curses.A_DIM),
-                            ('SAME NETWORK', self.emphasis()),
+                            ('SAME NETWORK', highlight),
                             ('  /  Mac + PS5 + Portal', 0))
                 self.put(10, 7, 'Use the main LAN; avoid guest Wi-Fi and VPN routes.', self.curses.A_DIM)
                 self.inline(12, 4, ('2. ', self.curses.A_DIM),
-                            ('DISCONNECT PORTAL', self.emphasis('warning')),
-                            ('  /  keep ', 0), ('PS5 powered on', self.curses.A_BOLD))
+                            ('DISCONNECT PORTAL', highlight),
+                            ('  /  keep ', 0), ('PS5 powered on', highlight))
                 self.inline(13, 7, ('On Portal: ', self.curses.A_DIM),
-                            ('Quick Menu -> Disconnect', self.curses.A_BOLD))
-                self.inline(15, 4, ('Keep this ', 0), ('Mac awake', self.curses.A_BOLD),
+                            ('Quick Menu -> Disconnect', highlight))
+                self.inline(15, 4, ('Keep this ', 0), ('Mac awake', highlight),
                             (' until restoration finishes.', 0))
-                self.inline(17, 4, ('Wait for ', 0), ('CONNECT NOW', self.emphasis('success')),
+                self.inline(17, 4, ('Wait for ', 0), ('CONNECT NOW', highlight),
                             (' before connecting Portal.', 0))
                 self.button(self.screen.getmaxyx()[0] - 5, 'I have checked these steps  ->')
                 self.screen.refresh()
@@ -342,19 +349,25 @@ class Wizard:
                 style |= self.curses.A_REVERSE
             value = self.values[index] or ('Enter interface' if index == 2 else 'Enter IPv4 address')
             self.put(row, 27, '[ ' + value.ljust(24)[:24] + ' ]', style)
-            self.put(row, 57, 'type here' if focused else 'editable',
-                     self.emphasis() if focused else self.curses.A_DIM)
+            if focused:
+                self.put(row, 57, 'type here', self.emphasis())
         self.put(16, 2, '>' if self.focus == 3 else ' ', self.emphasis())
         self.put(16, 4, 'Bitrate (Mbps)', self.curses.A_BOLD if self.focus == 3 else 0)
         column = 27
         for profile in PROFILES:
             label = f' [{"x" if profile == self.profile else " "}] {profile} '
+            if profile == '65':
+                label += 'recommended '
             style = self.emphasis() if profile == self.profile else 0
-            if profile == self.profile and self.focus == 3:
+            if profile == self.profile and self.focus == 3 and profile != '65':
                 style |= self.curses.A_REVERSE
             self.put(16, column, label, style)
+            if profile == '65':
+                self.rainbow(16, column + 5, '65 recommended')
+                if self.profile == '65' and self.focus == 3:
+                    self.put(16, column + 1, '[x]', self.emphasis() | self.curses.A_REVERSE)
             column += len(label) + 1
-        self.put(17, 27, 'Left / Right / Space to choose',
+        self.put(17, 27, 'use arrow to choose',
                  self.emphasis() if self.focus == 3 else self.curses.A_DIM)
         if self.error:
             self.paragraph(18, self.error, self.colors.get('error', 0), max_rows=2)
