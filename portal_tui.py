@@ -357,8 +357,8 @@ class Wizard:
             if focused:
                 self.put(row, 57, 'type here', self.emphasis())
         self.put(16, 2, '>' if self.focus == 3 else ' ', self.emphasis())
-        self.put(16, 4, 'Bitrate (Mbps)', self.curses.A_BOLD if self.focus == 3 else 0)
-        column = 27
+        self.put(15, 4, 'Bitrate (Mbps)', self.curses.A_BOLD if self.focus == 3 else 0)
+        column = 4
         for profile in PROFILES:
             label = f' [{"x" if profile == self.profile else " "}] {profile} '
             if profile == '65':
@@ -372,7 +372,7 @@ class Wizard:
                 if self.profile == '65' and self.focus == 3:
                     self.put(16, column + 1, '[x]', self.emphasis() | self.curses.A_REVERSE)
             column += len(label) + 1
-        self.put(17, 27, 'use arrow to choose',
+        self.put(16, column, 'use arrow to choose',
                  self.emphasis() if self.focus == 3 else self.curses.A_DIM)
         if self.error:
             self.paragraph(18, self.error, self.colors.get('error', 0), max_rows=2)
