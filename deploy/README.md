@@ -94,6 +94,41 @@ With macvlan, the Docker host itself can't reach the relay's IP. That's expected
 `docker compose run` reuses the fixed IP, so it can't start a second relay while the
 service is up.
 
+## Podman (Linux host, host network, community)
+
+[`podman/portal-podman.sh`](podman/portal-podman.sh) runs the same image with rootful
+Podman in the **host's** network namespace, plus a Quadlet unit for systemd. Use it when
+macvlan isn't available, for example when the relay host only has Wi-Fi. This is the
+native Linux relay packaged in a container: the relay uses the host's MAC and checks the
+host's IPv4 forwarding, which must stay off. Wired Ethernet is still preferred.
+
+```sh
+cp deploy/podman/portal.env.example deploy/podman/portal.env   # optional: answers for configure
+deploy/podman/portal-podman.sh build
+deploy/podman/portal-podman.sh configure 65   # host interface, e.g. wlp1s0 (not eth0)
+deploy/podman/portal-podman.sh baseline
+deploy/podman/portal-podman.sh try
+deploy/podman/portal-podman.sh enable         # Quadlet unit portal-relay, starts now and at boot
+```
+
+`status`, `log` and `logs` work while the service runs; `disable` stops it and removes
+the unit. Enrollment and runtime state are kept in `/var/lib/portal-relay/`. To change
+the profile: `disable`, `configure <N>`, `baseline`, `enable`.
+
+**Host forwarding.** Rootful Podman's netavark enables the host's `net.ipv4.ip_forward`
+when it sets up a bridge network, including the default network used by `podman build`.
+The script builds with `--network host` for that reason. Any other rootful bridge
+container on the same host turns forwarding back on and the relay then refuses to start.
+Rootless containers don't affect it. Use a dedicated relay host if you need those
+containers; don't remove the relay's check.
+
+The container gets only `NET_RAW`, not `--privileged`, so it can't change host sysctls.
+Volumes use `:Z` for SELinux hosts.
+
+Real-device status: one community report on openSUSE Leap 16 (Podman, Wi-Fi relay host)
+with a real PS5 and Portal: baseline, `try`, Quadlet start at boot, fresh reconnect and
+PS5 waking from rest mode worked with profile 65. Crash recovery wasn't tested.
+
 ## The `portal` helper
 
 | | LXC | Docker |
