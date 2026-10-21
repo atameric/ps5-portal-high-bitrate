@@ -1,5 +1,19 @@
 # PS5 Portal High Bitrate
 
+## Update — October 21, 2026
+
+The Raspberry Pi 4 Model B setup is now working on my own system! With my Mac switched off, I tested smooth gameplay through the Ethernet-connected Pi using the 100 Mbps profile. I also successfully tested automatic startup and a fresh Portal connection after rebooting the Pi. The code and setup instructions are on GitHub.
+
+The PS5-reported target is approximately 97 Mbps; actual video bitrate varies with the scene and network conditions.
+
+The Android test APK is ready! I’m planning to share it soon after final checks. Work on iOS is continuing, and I’ll share another progress update soon.
+
+The project will remain open source. Thanks to everyone testing and sharing feedback! 🙌
+
+[Raspberry Pi code and setup instructions](raspberry-pi/SETUP.md)
+
+---
+
 **Community preview: Windows / Linux automation + optional Proxmox / Docker deployment.** [Download v0.3.0-preview.3](https://github.com/atameric/ps5-portal-high-bitrate/releases/tag/v0.3.0-preview.3). [Automatic setup (EN)](AUTOMATION.md) | [Otomatik kurulum (TR)](AUTOMATION.tr.md) | [Container setup (experimental)](deploy/README.md). Includes Windows manual launchers and an always-on one-way relay with Windows Task Scheduler / Linux systemd installers. SDNick484 contributed Alpine LXC/OpenRC and Linux Docker macvlan packaging. Windows automation validation is pending; Linux/Pi reboot and reconnect success and Proxmox real-device success have community reports. Docker has synthetic tests only. Read the Proxmox NIC firewall scope before installing. The owner confirmed the original Mac mini automation prototype; this portable implementation still needs platform testing. No 4K or guaranteed latency improvement.
 
 The following sections describe the **macOS manual launcher**. For Windows manual mode use [WINDOWS.md](WINDOWS.md); for Linux or automatic mode use the guides above.
