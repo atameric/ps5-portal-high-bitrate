@@ -1,0 +1,28 @@
+# Quadlet unit: installed to /etc/containers/systemd/ by 'portal-podman.sh enable'.
+[Unit]
+Description=Experimental PS Portal bitrate relay (podman, host network)
+Wants=network-online.target
+After=network-online.target
+
+[Container]
+Image=localhost/portal-relay:local
+ContainerName=portal-relay
+Network=host
+AddCapability=NET_RAW
+RunInit=true
+Tmpfs=/run
+Volume=/var/lib/portal-relay/config:/etc/portal-bitrate:Z
+Volume=/var/lib/portal-relay/runtime:/var/lib/portal-bitrate-auto:Z
+HealthCmd=/usr/local/bin/portal health
+HealthInterval=30s
+HealthStartPeriod=20s
+# Relay hands off to its guardian, which repairs the Portal's ARP entry.
+StopTimeout=60
+
+[Service]
+Restart=always
+RestartSec=30
+TimeoutStopSec=90
+
+[Install]
+WantedBy=multi-user.target
