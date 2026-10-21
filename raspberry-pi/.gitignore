@@ -1,0 +1,48 @@
+# Private peer configurations
+auto-config.json
+config.json
+*config*.local.json
+private/
+
+# Python virtual environments and bytecode cache
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.cache/
+
+# Logs and packet captures
+*.log
+*.pcap
+*.pcapng
+*.cap
+
+# Volatile runtime, persistent state, locks, and receipts
+auto-runtime/
+runtime/
+state/
+status.json
+recovery.json
+restore-state.json
+baseline-run.json
+baseline-accepted.json
+disabled
+recovery-required
+*.lock
+*.flock
+*.result.json
+experiments/
+
+# Keys, certificates, and local secrets
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+.env
+.env.*
+
+# Keep public example configuration tracked
+!config.example.json

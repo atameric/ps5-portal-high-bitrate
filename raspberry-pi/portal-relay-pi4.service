@@ -1,0 +1,29 @@
+[Unit]
+Description=PlayStation Portal relay on Pi4 (100 Mbps profile)
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=120
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/portal-relay-pi4
+Environment=PYTHONUNBUFFERED=1
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+UMask=0077
+RuntimeDirectory=portal-linux-native
+RuntimeDirectoryMode=0700
+RuntimeDirectoryPreserve=yes
+StateDirectory=portal-linux-native
+StateDirectoryMode=0700
+ExecStartPre=/usr/sbin/ethtool -K eth0 gro off
+ExecStart=/opt/portal-relay-pi4/.venv/bin/python -u /opt/portal-relay-pi4/linux_native.py active --profile 100 --continuous --config /etc/portal-relay-pi4/config.json --runtime /run/portal-linux-native --state-dir /var/lib/portal-linux-native
+ExecStopPost=/usr/sbin/ethtool -K eth0 gro on
+KillMode=process
+TimeoutStopSec=30
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
