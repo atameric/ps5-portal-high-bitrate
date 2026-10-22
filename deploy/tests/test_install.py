@@ -50,12 +50,15 @@ class InstallerTests(unittest.TestCase):
             binary.chmod(0o755)
             helper = root / 'bin' / 'portal'
             helper.parent.mkdir()
+            shim = root / 'path-bin' / 'portal'
+            shim.parent.mkdir()
             script = INSTALLER.read_text()
             for original, destination in (
                 ('/opt/portal-bitrate-auto', app),
                 ('/var/lib/portal-bitrate-auto', root / 'runtime'),
                 ('/etc/portal-bitrate', root / 'config'),
                 ('/usr/local/bin/portal', helper),
+                ('/usr/bin/portal', shim),
             ):
                 script = script.replace(original, str(destination))
             installer = deploy / 'install-alpine.sh'
@@ -63,20 +66,22 @@ class InstallerTests(unittest.TestCase):
             environment = dict(os.environ, PORTAL_CONTAINER='1', PORTAL_SKIP_APK='1')
             result = subprocess.run(['sh', str(installer)], env=environment,
                                     capture_output=True, text=True, timeout=30)
-            return result, helper.exists()
+            return result, helper.exists(), shim.is_symlink()
 
     def test_failed_self_test_stops_before_helper_install(self):
-        result, helper_installed = self.run_installer(7)
+        result, helper_installed, shim_installed = self.run_installer(7)
         self.assertEqual(result.returncode, 7, result.stdout + result.stderr)
         self.assertIn('self-test diagnostic', result.stderr)
         self.assertFalse(helper_installed)
+        self.assertFalse(shim_installed)
         self.assertNotIn('==> Installed:', result.stdout)
 
     def test_successful_self_test_installs_helper(self):
-        result, helper_installed = self.run_installer(0)
+        result, helper_installed, shim_installed = self.run_installer(0)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn('full self-test output', result.stdout)
         self.assertTrue(helper_installed)
+        self.assertTrue(shim_installed)
         self.assertIn('==> Installed: fixture version', result.stdout)
 
 

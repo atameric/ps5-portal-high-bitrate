@@ -80,6 +80,12 @@ find "$APP" -name __pycache__ -type d -prune -exec rm -rf {} +
 echo "==> Helper"
 umask 022
 install -m 755 "$SRC/deploy/portal" /usr/local/bin/portal
+# pct enter/exec hand the container the PATH PVE sets in
+# PVE::CLIHandler::run_cli_handler (/sbin:/bin:/usr/sbin:/usr/bin), and their
+# non-login shell never reads /etc/profile, so /usr/local/bin is not searched.
+# Link the helper where that PATH looks, otherwise the documented bare `portal`
+# fails with "not found"; /usr/local/bin/portal keeps working as before.
+ln -sf /usr/local/bin/portal /usr/bin/portal
 if [ -z "$CONTAINER" ]; then
 	install -m 755 "$SRC/deploy/portal-bitrate.initd" /etc/init.d/portal-bitrate
 	echo "==> OpenRC service installed (not enabled; run 'portal enable' after testing)"

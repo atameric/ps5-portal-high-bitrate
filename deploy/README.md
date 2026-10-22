@@ -133,6 +133,11 @@ own topology.
 **Nothing reaches the LXC.** Check `firewall=0` on `net0`, and that the bridge and VLAN
 match the PS5/Portal LAN.
 
+**`portal: not found` in `pct enter` or `pct exec`.** Those shells receive the PATH PVE
+sets for its own CLI (`/sbin:/bin:/usr/sbin:/usr/bin`), which has no `/usr/local/bin`,
+and a non-login shell never reads `/etc/profile`. Re-run the installer to add the
+`/usr/bin/portal` link, or call `/usr/local/bin/portal` directly.
+
 ## Tests
 
 [`tests/netns-e2e.sh`](tests/netns-e2e.sh) and [`tests/docker-e2e.sh`](tests/docker-e2e.sh)
