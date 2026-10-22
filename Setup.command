@@ -6,5 +6,5 @@ python3 -m venv .venv
 if [[ ! -f config.json ]]; then
   cp config.example.json config.json
 fi
-printf '\nEdit config.json with your interface and device IP addresses before running.\n'
+printf '\nSetup complete. Double-click Start.command for guided configuration and play.\n'
 read 'reply?Press Enter to close. '

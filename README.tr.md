@@ -15,16 +15,20 @@ Mac üzerinden kendi PS5 ve Portal cihazların için **geçici yüksek bitrate i
 
 1. Python 3.10+ kurulu Mac'te projeyi indir veya klonla.
 2. `Setup.command` aç. Bağımlılıklar yerel `.venv` klasörüne kurulur.
-3. `config.json` içindeki örnek IP'leri kendi PS5 ve Portal adreslerinle değiştir; Mac ağ arayüzünü yaz. `networksetup -listallhardwareports` ile arayüzü bulabilirsin.
+3. `Start.command` ile İngilizce terminal sihirbazını aç. PS5 ve Portal IPv4 adreslerini gir, Mac ağ arayüzünü kontrol et ve bitrate profilini seç. Mevcut adresler otomatik doldurulur; sihirbaz `config.json` dosyasını yerel olarak kaydeder. IP adreslerini yönlendiricinin bağlı cihazlar listesinden bulabilirsin.
 4. Cihazlar aynı yerel ağda olmalı. Konuk ağı/istemci izolasyonu olmamalı. PS5 için Ethernet tercih et.
 
 ## Kullanım
 
 1. Portal'ın PS5 bağlantısını kes; PS5 açık kalsın.
-2. `Start.command` aç, 65, 100 veya deneysel 200 seç, Enter'a bas. Parolayı yalnız Mac'in sudo istemine gir.
-3. **READY** mesajından sonra Portal'dan bağlan.
-4. `Startup packet modified` ve ardından hedef doğrulamasını bekle.
-5. Program ağ yolunu geri yükleyince Mac aradan çıkar. Aynı oturumda yeniden çalıştırman gerekmez.
+2. `Start.command` aç. Parolayı yalnız Mac'in sudo istemine gir. Vurgulanan ön koşulları ve düzenlenebilir cihaz adreslerini kontrol et; ilk deneme için 65 Mbps seç. Tab veya yukarı/aşağı tuşları alanı, sağ/sol veya boşluk tuşu profili seçer. Yazarak seçili değeri değiştirebilirsin.
+3. **WAIT** sırasında Portal bağlantısı kesik kalsın. Yeşil **READY / CONNECT NOW** mesajından sonra Portal'dan bağlan. Ekrandaki **02:00** ile başlayan **120 saniyelik geri sayım** bağlantı süresini gösterir.
+4. Başlangıç paketi değiştiğinde hedefi doğrulamak için en fazla 15 saniye daha beklenir. Üç yüksek hedef bildirimi gelirse doğrudan ağ yolu hemen geri yüklenir.
+5. **Ready to play**, hedef doğrulaması, yerel paket çıkışı doğrulaması ve hatasız geri yükleme gerektirir. Q/Esc ile çıkabilir, Enter ile yeni bir deneme başlatabilirsin. Deneme sırasında Q, Esc veya Ctrl-C ağın geri yüklenmesini başlatır. Kurtarma hatası varsa yeni deneme düğmesi devre dışı kalır; D ayrıntıları gösterir.
+
+Terminalden açmak için: `sudo .venv/bin/python portal_tui.py`. Ağ veya yapılandırma değişikliği yapmadan önizleme: `.venv/bin/python portal_tui.py --demo`. En az 72 sütun ve 24 satırlık terminal gerekir; yeni bağımlılık gerekmez.
+
+Hazırlık, bağlantıya hazır olma ve sonuç durumları farklı işaretler ve kısa animasyonlarla gösterilir. Hareketi kapatmak için `--no-animations` ekle; durum etiketleri ve vurgular korunur. Animasyonlar ağ aktarımını duraklatmaz.
 
 Kalıcı cihaz değişikliği yapılmaz. Her yeni oturumda işlem gerekir. Normal ayara dönmek için bağlantıyı kapatıp başlatıcı olmadan yeniden bağlan.
 
@@ -36,7 +40,7 @@ Kalıcı cihaz değişikliği yapılmaz. Her yeni oturumda işlem gerekir. Norma
 - `UNCONFIRMED`: paket değişti ama yüksek hedef doğrulanmadı.
 - `restoration_errors`: boş olmalı. Hata varsa [İngilizce kurtarma adımlarını](README.md#troubleshooting-and-recovery) uygula.
 
-Aktarma en fazla 40 saniye; başlangıç ve temizleme ek süre alabilir. Ayrı kurtarma süreci 55 saniye sonra özgün ağ ayarlarını geri yüklemeyi dener. Mac kapanırsa kurtarma çalışamaz.
+Sihirbazda 5 saniyelik hazırlıktan sonra tam 120 saniyelik bağlantı süresi ve ilk değiştirilen paketten sonra en fazla 15 saniyelik doğrulama süresi vardır. Ayrı kurtarma süreci 155 saniye sonra özgün ağ ayarlarını geri yüklemeyi dener. Eski `portal_active_probe.py` komutunun varsayılan 40 saniyelik aktarma ve 55 saniyelik kurtarma süreleri korunur. Başlangıç ve temizleme ek süre alabilir. Mac kapanırsa kurtarma çalışamaz.
 
 Özel IP'ler, raporlar ve ham paket kayıtları yerel kalır. Ham kayıtları GitHub'a yükleme. Bu araç jailbreak değildir; Sony ile bağlantısı yoktur.
 

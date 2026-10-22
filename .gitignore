@@ -2,6 +2,9 @@
 __pycache__/
 *.py[cod]
 config.json
+tui-settings.json
+.config.json-*
+.tui-settings.json-*
 experiments/
 captures/
 research/

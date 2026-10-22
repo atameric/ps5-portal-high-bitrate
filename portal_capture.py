@@ -36,6 +36,9 @@ def mac(ip):
         answers,_=srp(Ether(src=own,dst='ff:ff:ff:ff:ff:ff')/ARP(pdst=ip),iface=IFACE,timeout=2,retry=1,verbose=False)
         found={r[ARP].hwsrc.lower() for _,r in answers if ARP in r and r[ARP].psrc==ip and r[ARP].op==2}
         if len(found)==1: return found.pop()
+        device='PS5' if ip==PS5 else 'Portal' if ip==PORTAL else 'Device'
+        if found: raise RuntimeError(f'Multiple devices replied for {device} ({ip}) on {IFACE}; check for a duplicate IP. No network changes made.')
+        raise RuntimeError(f'{device} ({ip}) did not respond on {IFACE}; no network changes made')
     if not match: raise RuntimeError(f'{ip}: MAC resolution requires local sudo; no network changes made')
     parts=match[1].split(':')
     if len(parts)!=6: raise RuntimeError('Invalid MAC')
@@ -76,14 +79,17 @@ def preflight():
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--watchdog',type=Path)
+    p.add_argument('--watchdog-seconds', type=int, default=55)
     p.add_argument('--restore',type=Path)
     p.add_argument('--check',action='store_true')
     a=p.parse_args()
+    if not 16 <= a.watchdog_seconds <= 170:
+        p.error('--watchdog-seconds must be between 16 and 170')
     if os.geteuid()!=0: p.error('Run with sudo from your local Terminal')
     if a.watchdog or a.restore:
         if a.watchdog:
             signal.signal(signal.SIGHUP,signal.SIG_IGN)
-            time.sleep(55)
+            time.sleep(a.watchdog_seconds)
         path=a.watchdog or a.restore
         errors=restore(json.loads(path.read_text()))
         path.with_suffix('.result.json').write_text(json.dumps({'restoration_errors':errors}))
