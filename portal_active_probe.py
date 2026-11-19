@@ -117,7 +117,7 @@ class TargetConfirmation:
 
 def run(active, finish_on_high_target=False):
     if os.geteuid()!=0:raise RuntimeError('Use local Terminal launcher with sudo')
-    uid,gid=int(os.environ['SUDO_UID']),int(os.environ['SUDO_GID']);os.umask(0o077)
+    uid,gid=int(os.environ.get('SUDO_UID',os.getuid())),int(os.environ.get('SUDO_GID',os.getgid()));os.umask(0o077)
     network.configure()
     state=network.preflight()
     # Never interrupt existing routing services.
@@ -195,6 +195,10 @@ def run(active, finish_on_high_target=False):
         report['high_target_confirmed']=confirmation.ready
         for artifact in folder.iterdir():os.chown(artifact,uid,gid)
         (folder/'report.json').write_text(json.dumps(report,indent=2)+'\n');os.chown(folder/'report.json',uid,gid);os.chown(folder,uid,gid)
+        # The experiments/ parent is created root-owned by sudo; hand it to the
+        # user as well or the report folder cannot be opened from Finder.
+        try:os.chown(folder.parent,uid,gid)
+        except OSError:pass
         print(json.dumps(report,indent=2));print('Report:',folder/'report.json',flush=True)
 
     return report
